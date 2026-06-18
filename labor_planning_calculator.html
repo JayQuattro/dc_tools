@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labor Planning Calculator • Warehouse Ops</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #0f172a;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .section-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .section-card:hover {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+        }
+
+        .metric-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper input {
+            transition: all 0.15s ease;
+        }
+        
+        .input-wrapper input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+            border-color: #64748b;
+        }
+
+        .pct-input {
+            padding-right: 2rem !important;
+        }
+
+        .pct-suffix {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 0.875rem;
+            pointer-events: none;
+        }
+
+        .result-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+        }
+
+        .stat-number {
+            font-variant-numeric: tabular-nums;
+            transition: all 0.3s ease;
+        }
+
+        .nav-active {
+            background-color: #0f172a;
+            color: white;
+            border-radius: 6px;
+        }
+
+        .calc-row {
+            transition: background-color 0.1s ease;
+        }
+
+        .calc-row:hover {
+            background-color: #f8fafc;
+        }
+
+        .warehouse-bg {
+            background-image: 
+                linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.025em;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .section-header {
+            font-size: 0.875rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: #0f172a;
+        }
+
+        .subtle-divider {
+            border-color: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="px-8 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-x-4">
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-warehouse text-white text-3xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-display text-3xl tracking-tighter font-semibold text-slate-900">Labor Planner</h1>
+                            <p class="text-[10px] text-slate-500 -mt-1 tracking-[1.5px]">WAREHOUSE OPERATIONS</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-2">
+                    <!-- Status -->
+                    <div id="save-status" 
+                         class="hidden items-center gap-x-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-3xl text-xs font-medium">
+                        <i class="fa-solid fa-check text-emerald-500"></i>
+                        <span>Saved to browser</span>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <button onclick="resetToDefaults()" 
+                            class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-3xl transition-colors">
+                        <i class="fa-solid fa-undo text-xs"></i>
+                        <span>Reset Defaults</span>
+                    </button>
+                    
+                    <button onclick="exportToJSON()" 
+                            class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-3xl transition-colors">
+                        <i class="fa-solid fa-download text-xs"></i>
+                        <span>Export</span>
+                    </button>
+                    
+                    <label class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-3xl transition-colors cursor-pointer">
+                        <i class="fa-solid fa-upload text-xs"></i>
+                        <span>Import</span>
+                        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importFromJSON(event)">
+                    </label>
+                    
+                    <button onclick="clearAllData()" 
+                            class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-3xl transition-colors">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                        <span>Clear</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-screen-2xl mx-auto px-8 pt-8 pb-12">
+        
+        <!-- Intro / Instructions -->
+        <div class="mb-8 flex items-end justify-between">
+            <div>
+                <p class="text-slate-600 max-w-md">Plan daily labor requirements across Pick, Pack, Ship &amp; Indirect. All inputs auto-save locally.</p>
+            </div>
+            <div class="text-right">
+                <div class="inline-flex items-center gap-x-2 text-xs px-3 py-1 bg-white border border-slate-200 rounded-3xl text-slate-500">
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span>Live calculations • v1.0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KEY METRICS BAR -->
+        <div class="mb-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="metric-label mb-1">Total Orders</div>
+                <div id="metric-orders" class="stat-number text-4xl font-semibold tracking-tighter text-slate-900">12,500</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="metric-label mb-1">Total Units</div>
+                <div id="metric-units" class="stat-number text-4xl font-semibold tracking-tighter text-slate-900">35,000</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="metric-label mb-1">Pick HC Required</div>
+                <div id="metric-pick-hc" class="stat-number text-4xl font-semibold tracking-tighter text-indigo-600">18.4</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="metric-label mb-1">Pack HC Required</div>
+                <div id="metric-pack-hc" class="stat-number text-4xl font-semibold tracking-tighter text-emerald-600">9.2</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="metric-label mb-1">Ship HC (Fixed + Adj)</div>
+                <div id="metric-ship-hc" class="stat-number text-4xl font-semibold tracking-tighter text-amber-600">6.5</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="metric-label mb-1">Indirect HC</div>
+                <div id="metric-indirect-hc" class="stat-number text-4xl font-semibold tracking-tighter text-violet-600">4.8</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm col-span-2 md:col-span-1 lg:col-span-2 xl:col-span-2">
+                <div class="metric-label mb-1">TOTAL HEADCOUNT</div>
+                <div class="flex items-baseline gap-x-3">
+                    <div id="metric-total-hc" class="stat-number text-5xl font-semibold tracking-tighter text-slate-900">39.0</div>
+                    <div class="text-xs text-slate-500 pb-1">FTE</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            
+            <!-- MAIN SECTION -->
+            <div class="xl:col-span-12">
+                <div class="section-card bg-white border border-slate-200 rounded-3xl p-7 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-x-3">
+                            <div class="w-9 h-9 bg-slate-900 text-white rounded-2xl flex items-center justify-center">
+                                <i class="fa-solid fa-tachometer-alt"></i>
+                            </div>
+                            <div>
+                                <h2 class="section-header tracking-tight">Main Parameters</h2>
+                                <p class="text-xs text-slate-500">Core volume drivers</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-7">
+                        <!-- Productive Hours -->
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1.5">PRODUCTIVE HOURS / PERSON</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="main-productive-hours" step="0.25" min="0" value="7.5"
+                                       class="w-full px-4 py-3 bg-white border border-slate-300 rounded-2xl text-lg font-medium focus:border-slate-400"
+                                       oninput="handleInputChange()">
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Available productive time per associate</p>
+                        </div>
+                        
+                        <!-- Orders -->
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1.5">ORDERS</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="main-orders" step="100" min="0" value="12500"
+                                       class="w-full px-4 py-3 bg-white border border-slate-300 rounded-2xl text-lg font-medium focus:border-slate-400"
+                                       oninput="handleInputChange()">
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Total orders for planning period</p>
+                        </div>
+                        
+                        <!-- UPO -->
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1.5">UPO ESTIMATE</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="main-upo-estimate" step="0.1" min="0" value="2.8"
+                                       class="w-full px-4 py-3 bg-white border border-slate-300 rounded-2xl text-lg font-medium focus:border-slate-400"
+                                       oninput="handleInputChange()">
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Units Per Order (average)</p>
+                        </div>
+                        
+                        <!-- Singles % -->
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1.5">SINGLES %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="main-singles-pct" step="0.5" min="0" max="100" value="68"
+                                       class="w-full px-4 py-3 bg-white border border-slate-300 rounded-2xl text-lg font-medium focus:border-slate-400 pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix font-medium">%</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">% of orders that are single-line</p>
+                        </div>
+                        
+                        <!-- Autobag % -->
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1.5">AUTOBAG %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="main-autobag-pct" step="0.5" min="0" max="100" value="42"
+                                       class="w-full px-4 py-3 bg-white border border-slate-300 rounded-2xl text-lg font-medium focus:border-slate-400 pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix font-medium">%</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">% of volume eligible for autobagger</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PICK SECTION -->
+            <div class="xl:col-span-6">
+                <div class="section-card bg-white border border-slate-200 rounded-3xl p-7 shadow-sm h-full">
+                    <div class="flex items-center gap-x-3 mb-6">
+                        <div class="w-9 h-9 bg-indigo-600 text-white rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-hand-paper"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="section-header tracking-tight">Pick</h2>
+                            <p class="text-xs text-slate-500">Picking labor requirements</p>
+                        </div>
+                        <div id="pick-shift-warning" class="hidden text-[10px] px-2.5 py-px bg-amber-100 text-amber-700 rounded font-medium">Shift % ≠ 100%</div>
+                    </div>
+                    
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Singles Pick UPH</label>
+                                <input type="number" id="pick-singles-uph" step="1" min="0" value="145"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium"
+                                       oninput="handleInputChange()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Multi Pick UPH</label>
+                                <input type="number" id="pick-multi-uph" step="1" min="0" value="92"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium"
+                                       oninput="handleInputChange()">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Pick Absenteeism %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="pick-absenteeism-pct" step="0.25" min="0" max="100" value="9.5"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix text-xs">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">1st Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="pick-1st-shift-pct" step="1" min="0" max="100" value="62"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('pick')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">2nd Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="pick-2nd-shift-pct" step="1" min="0" max="100" value="38"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('pick')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PACK SECTION -->
+            <div class="xl:col-span-6">
+                <div class="section-card bg-white border border-slate-200 rounded-3xl p-7 shadow-sm h-full">
+                    <div class="flex items-center gap-x-3 mb-6">
+                        <div class="w-9 h-9 bg-emerald-600 text-white rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-box"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="section-header tracking-tight">Pack</h2>
+                            <p class="text-xs text-slate-500">Packing labor requirements</p>
+                        </div>
+                        <div id="pack-shift-warning" class="hidden text-[10px] px-2.5 py-px bg-amber-100 text-amber-700 rounded font-medium">Shift % ≠ 100%</div>
+                    </div>
+                    
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Standard Pack OPH</label>
+                                <input type="number" id="pack-standard-oph" step="1" min="0" value="78"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium"
+                                       oninput="handleInputChange()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Autobagger Pack OPH</label>
+                                <input type="number" id="pack-autobagger-oph" step="1" min="0" value="165"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium"
+                                       oninput="handleInputChange()">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Pack Absenteeism %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="pack-absenteeism-pct" step="0.25" min="0" max="100" value="8.0"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix text-xs">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">1st Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="pack-1st-shift-pct" step="1" min="0" max="100" value="65"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('pack')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">2nd Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="pack-2nd-shift-pct" step="1" min="0" max="100" value="35"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('pack')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SHIPPING SECTION -->
+            <div class="xl:col-span-6">
+                <div class="section-card bg-white border border-slate-200 rounded-3xl p-7 shadow-sm h-full">
+                    <div class="flex items-center gap-x-3 mb-6">
+                        <div class="w-9 h-9 bg-amber-600 text-white rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-truck"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="section-header tracking-tight">Shipping</h2>
+                            <p class="text-xs text-slate-500">Outbound shipping labor</p>
+                        </div>
+                        <div id="ship-shift-warning" class="hidden text-[10px] px-2.5 py-px bg-amber-100 text-amber-700 rounded font-medium">Shift % ≠ 100%</div>
+                    </div>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Shipping Fixed HC</label>
+                            <input type="number" id="ship-fixed-hc" step="0.5" min="0" value="5.0"
+                                   class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium"
+                                   oninput="handleInputChange()">
+                            <p class="text-[10px] text-slate-400 mt-1">Base / planned shipping headcount</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Shipping Absenteeism %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="ship-absenteeism-pct" step="0.25" min="0" max="100" value="7.5"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix text-xs">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">1st Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="ship-1st-shift-pct" step="1" min="0" max="100" value="70"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('ship')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">2nd Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="ship-2nd-shift-pct" step="1" min="0" max="100" value="30"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('ship')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INDIRECT SECTION -->
+            <div class="xl:col-span-6">
+                <div class="section-card bg-white border border-slate-200 rounded-3xl p-7 shadow-sm h-full">
+                    <div class="flex items-center gap-x-3 mb-6">
+                        <div class="w-9 h-9 bg-violet-600 text-white rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-users-cog"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="section-header tracking-tight">Indirect</h2>
+                            <p class="text-xs text-slate-500">Support &amp; indirect labor</p>
+                        </div>
+                        <div id="indirect-shift-warning" class="hidden text-[10px] px-2.5 py-px bg-amber-100 text-amber-700 rounded font-medium">Shift % ≠ 100%</div>
+                    </div>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Indirect Support %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="indirect-support-pct" step="0.5" min="0" max="100" value="18"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix text-xs">%</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-0.5">% of total direct HC</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">Indirect Absenteeism %</label>
+                            <div class="input-wrapper relative">
+                                <input type="number" id="indirect-absenteeism-pct" step="0.25" min="0" max="100" value="6.0"
+                                       class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                       oninput="handleInputChange()">
+                                <span class="pct-suffix text-xs">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">1st Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="indirect-1st-shift-pct" step="1" min="0" max="100" value="68"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('indirect')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold tracking-wider text-slate-500 mb-1">2nd Shift %</label>
+                                <div class="input-wrapper relative">
+                                    <input type="number" id="indirect-2nd-shift-pct" step="1" min="0" max="100" value="32"
+                                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-2xl text-base font-medium pct-input"
+                                           oninput="handleInputChange(); validateShiftPercentages('indirect')">
+                                    <span class="pct-suffix text-xs">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULTS / BREAKDOWN -->
+            <div class="xl:col-span-12 mt-4">
+                <div class="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                    <div class="px-7 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                        <div class="flex items-center gap-x-3">
+                            <i class="fa-solid fa-chart-bar text-slate-400"></i>
+                            <h2 class="section-header tracking-tight">Labor Summary &amp; Shift Breakdown</h2>
+                        </div>
+                        <div class="text-xs text-slate-500 font-medium">Auto-calculated • Updates live</div>
+                    </div>
+                    
+                    <!-- Summary Table -->
+                    <div class="p-7">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-xs uppercase tracking-widest text-slate-500">
+                                    <th class="text-left pb-3 font-semibold">Function</th>
+                                    <th class="text-right pb-3 font-semibold">Total HC</th>
+                                    <th class="text-right pb-3 font-semibold">1st Shift</th>
+                                    <th class="text-right pb-3 font-semibold">2nd Shift</th>
+                                    <th class="text-right pb-3 font-semibold w-24">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm divide-y divide-slate-100" id="results-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                            <tfoot class="border-t-2 border-slate-300">
+                                <tr class="font-semibold text-base">
+                                    <td class="pt-4 text-slate-900">TOTAL HEADCOUNT</td>
+                                    <td id="total-hc-cell" class="pt-4 text-right font-bold text-slate-900 tabular-nums"></td>
+                                    <td id="total-1st-cell" class="pt-4 text-right font-bold text-slate-900 tabular-nums"></td>
+                                    <td id="total-2nd-cell" class="pt-4 text-right font-bold text-slate-900 tabular-nums"></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <!-- Additional Insights -->
+                    <div class="bg-slate-50 border-t border-slate-100 px-7 py-5 text-xs">
+                        <div class="flex flex-wrap items-center gap-x-8 gap-y-2 text-slate-600">
+                            <div class="flex items-center gap-x-2">
+                                <span class="font-medium">Blended Pick UPH:</span> 
+                                <span id="insight-blended-uph" class="font-mono font-semibold text-slate-800">--</span>
+                            </div>
+                            <div class="flex items-center gap-x-2">
+                                <span class="font-medium">Total Direct HC:</span> 
+                                <span id="insight-direct-hc" class="font-mono font-semibold text-slate-800">--</span>
+                            </div>
+                            <div class="flex items-center gap-x-2">
+                                <span class="font-medium">Indirect as % of Direct:</span> 
+                                <span id="insight-indirect-pct" class="font-mono font-semibold text-slate-800">--</span>
+                            </div>
+                            <div class="flex-1"></div>
+                            <div onclick="copyResultsToClipboard()" class="cursor-pointer flex items-center gap-x-1.5 text-slate-400 hover:text-slate-600 transition-colors">
+                                <i class="fa-solid fa-copy text-xs"></i>
+                                <span class="text-[10px] font-medium tracking-wider">COPY RESULTS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes / Assumptions -->
+        <div class="mt-8 text-xs text-slate-500 max-w-3xl">
+            <p><strong class="text-slate-600">How calculations work (current defaults):</strong> 
+            Total Units = Orders × UPO. Singles/Multi split by Singles %. Pick hours based on respective UPHs. 
+            Pack hours split by Autobag % using respective OPH rates. All areas adjusted for absenteeism 
+            (staffing = required effective hours / (1 − absenteeism)). Indirect = % of total direct HC. 
+            Shift splits applied to final required HC per function. 
+            <span class="font-medium text-slate-400">— Provide your exact formulas/logic and I’ll refine instantly.</span></p>
+        </div>
+        
+    </div>
+
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#0f172a');
+            
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'display': ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif']
+                        }
+                    }
+                }
+            };
+        }
+
+        // Default values
+        const DEFAULTS = {
+            'main-productive-hours': 7.5,
+            'main-orders': 12500,
+            'main-upo-estimate': 2.8,
+            'main-singles-pct': 68,
+            'main-autobag-pct': 42,
+            
+            'pick-singles-uph': 145,
+            'pick-multi-uph': 92,
+            'pick-absenteeism-pct': 9.5,
+            'pick-1st-shift-pct': 62,
+            'pick-2nd-shift-pct': 38,
+            
+            'pack-standard-oph': 78,
+            'pack-autobagger-oph': 165,
+            'pack-absenteeism-pct': 8.0,
+            'pack-1st-shift-pct': 65,
+            'pack-2nd-shift-pct': 35,
+            
+            'ship-fixed-hc': 5.0,
+            'ship-absenteeism-pct': 7.5,
+            'ship-1st-shift-pct': 70,
+            'ship-2nd-shift-pct': 30,
+            
+            'indirect-support-pct': 18,
+            'indirect-absenteeism-pct': 6.0,
+            'indirect-1st-shift-pct': 68,
+            'indirect-2nd-shift-pct': 32
+        };
+
+        // Get all input IDs
+        const INPUT_IDS = Object.keys(DEFAULTS);
+
+        function getInputValue(id) {
+            const el = document.getElementById(id);
+            if (!el) return 0;
+            const val = parseFloat(el.value);
+            return isNaN(val) ? 0 : val;
+        }
+
+        function setInputValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = value;
+            }
+        }
+
+        // Save all inputs to localStorage
+        function saveToLocalStorage() {
+            const data = {};
+            INPUT_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) data[id] = el.value;
+            });
+            
+            data._lastSaved = new Date().toISOString();
+            localStorage.setItem('laborPlannerData_v1', JSON.stringify(data));
+            
+            // Show saved indicator
+            showSaveStatus();
+        }
+
+        function showSaveStatus() {
+            const statusEl = document.getElementById('save-status');
+            statusEl.classList.remove('hidden');
+            statusEl.classList.add('flex');
+            
+            setTimeout(() => {
+                statusEl.classList.remove('flex');
+                statusEl.classList.add('hidden');
+            }, 1800);
+        }
+
+        // Load from localStorage or defaults
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('laborPlannerData_v1');
+            
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    INPUT_IDS.forEach(id => {
+                        if (data[id] !== undefined) {
+                            setInputValue(id, data[id]);
+                        }
+                    });
+                    return true;
+                } catch (e) {
+                    console.warn('Failed to parse saved data, using defaults');
+                }
+            }
+            
+            // Load defaults
+            Object.keys(DEFAULTS).forEach(id => {
+                setInputValue(id, DEFAULTS[id]);
+            });
+            return false;
+        }
+
+        // Validate shift percentages (warn if not ~100%)
+        function validateShiftPercentages(section) {
+            let firstId, secondId, warningId;
+            
+            if (section === 'pick') {
+                firstId = 'pick-1st-shift-pct';
+                secondId = 'pick-2nd-shift-pct';
+                warningId = 'pick-shift-warning';
+            } else if (section === 'pack') {
+                firstId = 'pack-1st-shift-pct';
+                secondId = 'pack-2nd-shift-pct';
+                warningId = 'pack-shift-warning';
+            } else if (section === 'ship') {
+                firstId = 'ship-1st-shift-pct';
+                secondId = 'ship-2nd-shift-pct';
+                warningId = 'ship-shift-warning';
+            } else if (section === 'indirect') {
+                firstId = 'indirect-1st-shift-pct';
+                secondId = 'indirect-2nd-shift-pct';
+                warningId = 'indirect-shift-warning';
+            } else {
+                return;
+            }
+            
+            const first = getInputValue(firstId);
+            const second = getInputValue(secondId);
+            const sum = first + second;
+            const warningEl = document.getElementById(warningId);
+            
+            if (Math.abs(sum - 100) > 1.5) {
+                warningEl.classList.remove('hidden');
+                warningEl.classList.add('flex', 'items-center');
+            } else {
+                warningEl.classList.add('hidden');
+                warningEl.classList.remove('flex', 'items-center');
+            }
+        }
+
+        // Main calculation engine
+        function calculateAll() {
+            // === READ INPUTS ===
+            const productiveHours = getInputValue('main-productive-hours');
+            const orders = getInputValue('main-orders');
+            const upo = getInputValue('main-upo-estimate');
+            const singlesPct = getInputValue('main-singles-pct') / 100;
+            const autobagPct = getInputValue('main-autobag-pct') / 100;
+            
+            // Pick
+            const singlesUPH = getInputValue('pick-singles-uph');
+            const multiUPH = getInputValue('pick-multi-uph');
+            const pickAbs = getInputValue('pick-absenteeism-pct') / 100;
+            const pick1stPct = getInputValue('pick-1st-shift-pct') / 100;
+            const pick2ndPct = getInputValue('pick-2nd-shift-pct') / 100;
+            
+            // Pack
+            const standardOPH = getInputValue('pack-standard-oph');
+            const autobaggerOPH = getInputValue('pack-autobagger-oph');
+            const packAbs = getInputValue('pack-absenteeism-pct') / 100;
+            const pack1stPct = getInputValue('pack-1st-shift-pct') / 100;
+            const pack2ndPct = getInputValue('pack-2nd-shift-pct') / 100;
+            
+            // Ship
+            const shipFixed = getInputValue('ship-fixed-hc');
+            const shipAbs = getInputValue('ship-absenteeism-pct') / 100;
+            const ship1stPct = getInputValue('ship-1st-shift-pct') / 100;
+            const ship2ndPct = getInputValue('ship-2nd-shift-pct') / 100;
+            
+            // Indirect
+            const indirectSupport = getInputValue('indirect-support-pct') / 100;
+            const indirectAbs = getInputValue('indirect-absenteeism-pct') / 100;
+            const ind1stPct = getInputValue('indirect-1st-shift-pct') / 100;
+            const ind2ndPct = getInputValue('indirect-2nd-shift-pct') / 100;
+
+            // === CORE CALCULATIONS (Current logic - replace with your formulas) ===
+            
+            // Volume
+            const totalUnits = orders * upo;
+            const singlesUnits = totalUnits * singlesPct;
+            const multiUnits = totalUnits * (1 - singlesPct);
+            
+            // PICK
+            let pickHoursNeeded = 0;
+            if (singlesUPH > 0) pickHoursNeeded += singlesUnits / singlesUPH;
+            if (multiUPH > 0) pickHoursNeeded += multiUnits / multiUPH;
+            
+            const pickEffectiveHours = productiveHours * (1 - pickAbs);
+            const requiredPickHC = pickEffectiveHours > 0 ? pickHoursNeeded / pickEffectiveHours : 0;
+            const pick1stHC = requiredPickHC * pick1stPct;
+            const pick2ndHC = requiredPickHC * pick2ndPct;
+            
+            // PACK (order-based with autobag split)
+            const standardOrders = orders * (1 - autobagPct);
+            const autobagOrders = orders * autobagPct;
+            
+            let packHoursNeeded = 0;
+            if (standardOPH > 0) packHoursNeeded += standardOrders / standardOPH;
+            if (autobaggerOPH > 0) packHoursNeeded += autobagOrders / autobaggerOPH;
+            
+            const packEffectiveHours = productiveHours * (1 - packAbs);
+            const requiredPackHC = packEffectiveHours > 0 ? packHoursNeeded / packEffectiveHours : 0;
+            const pack1stHC = requiredPackHC * pack1stPct;
+            const pack2ndHC = requiredPackHC * pack2ndPct;
+            
+            // SHIPPING (fixed base, adjusted for absenteeism)
+            const requiredShipHC = (1 - shipAbs) > 0 ? shipFixed / (1 - shipAbs) : shipFixed;
+            const ship1stHC = requiredShipHC * ship1stPct;
+            const ship2ndHC = requiredShipHC * ship2ndPct;
+            
+            // INDIRECT (as % of direct)
+            const totalDirectHC = requiredPickHC + requiredPackHC + requiredShipHC;
+            const indirectBase = totalDirectHC * indirectSupport;
+            const requiredIndirectHC = (1 - indirectAbs) > 0 ? indirectBase / (1 - indirectAbs) : indirectBase;
+            const ind1stHC = requiredIndirectHC * ind1stPct;
+            const ind2ndHC = requiredIndirectHC * ind2ndPct;
+            
+            // GRAND TOTALS
+            const totalHC = totalDirectHC + requiredIndirectHC;
+            const total1stHC = pick1stHC + pack1stHC + ship1stHC + ind1stHC;
+            const total2ndHC = pick2ndHC + pack2ndHC + ship2ndHC + ind2ndHC;
+            
+            // Blended Pick UPH (for insight)
+            const blendedUPH = (singlesUnits + multiUnits) > 0 ? 
+                (singlesUnits + multiUnits) / pickHoursNeeded : 0;
+
+            // === UPDATE UI ===
+            
+            // Top metrics
+            document.getElementById('metric-orders').textContent = Math.round(orders).toLocaleString();
+            document.getElementById('metric-units').textContent = Math.round(totalUnits).toLocaleString();
+            document.getElementById('metric-pick-hc').textContent = requiredPickHC.toFixed(1);
+            document.getElementById('metric-pack-hc').textContent = requiredPackHC.toFixed(1);
+            document.getElementById('metric-ship-hc').textContent = requiredShipHC.toFixed(1);
+            document.getElementById('metric-indirect-hc').textContent = requiredIndirectHC.toFixed(1);
+            document.getElementById('metric-total-hc').textContent = totalHC.toFixed(1);
+            
+            // Results table
+            const tbody = document.getElementById('results-table-body');
+            tbody.innerHTML = `
+                <tr class="calc-row">
+                    <td class="py-3 font-medium text-slate-700">Pick</td>
+                    <td class="py-3 text-right font-mono font-semibold text-indigo-600">${requiredPickHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-indigo-600">${pick1stHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-indigo-600">${pick2ndHC.toFixed(2)}</td>
+                    <td class="py-3 text-right text-[10px] text-slate-400">Singles + Multi</td>
+                </tr>
+                <tr class="calc-row">
+                    <td class="py-3 font-medium text-slate-700">Pack</td>
+                    <td class="py-3 text-right font-mono font-semibold text-emerald-600">${requiredPackHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-emerald-600">${pack1stHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-emerald-600">${pack2ndHC.toFixed(2)}</td>
+                    <td class="py-3 text-right text-[10px] text-slate-400">Standard + Autobag</td>
+                </tr>
+                <tr class="calc-row">
+                    <td class="py-3 font-medium text-slate-700">Shipping</td>
+                    <td class="py-3 text-right font-mono font-semibold text-amber-600">${requiredShipHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-amber-600">${ship1stHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-amber-600">${ship2ndHC.toFixed(2)}</td>
+                    <td class="py-3 text-right text-[10px] text-slate-400">Fixed + Abs adj.</td>
+                </tr>
+                <tr class="calc-row">
+                    <td class="py-3 font-medium text-slate-700">Indirect</td>
+                    <td class="py-3 text-right font-mono font-semibold text-violet-600">${requiredIndirectHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-violet-600">${ind1stHC.toFixed(2)}</td>
+                    <td class="py-3 text-right font-mono text-violet-600">${ind2ndHC.toFixed(2)}</td>
+                    <td class="py-3 text-right text-[10px] text-slate-400">${(indirectSupport * 100).toFixed(0)}% of direct</td>
+                </tr>
+            `;
+            
+            // Footer totals
+            document.getElementById('total-hc-cell').textContent = totalHC.toFixed(2);
+            document.getElementById('total-1st-cell').textContent = total1stHC.toFixed(2);
+            document.getElementById('total-2nd-cell').textContent = total2ndHC.toFixed(2);
+            
+            // Insights
+            document.getElementById('insight-blended-uph').textContent = blendedUPH.toFixed(1);
+            document.getElementById('insight-direct-hc').textContent = totalDirectHC.toFixed(1);
+            document.getElementById('insight-indirect-pct').textContent = totalDirectHC > 0 ? 
+                ((requiredIndirectHC / totalDirectHC) * 100).toFixed(1) + '%' : '—';
+            
+            // Store last results for export/copy if needed
+            window.lastCalculationResults = {
+                totalUnits, totalHC, requiredPickHC, requiredPackHC, requiredShipHC, requiredIndirectHC,
+                pick1stHC, pick2ndHC, pack1stHC, pack2ndHC, ship1stHC, ship2ndHC, ind1stHC, ind2ndHC,
+                total1stHC, total2ndHC, blendedUPH, totalDirectHC
+            };
+        }
+
+        // Handle any input change
+        function handleInputChange() {
+            // Debounce slightly for performance (not strictly needed)
+            calculateAll();
+            saveToLocalStorage();
+            
+            // Re-validate all shift warnings (cheap)
+            ['pick', 'pack', 'ship', 'indirect'].forEach(s => validateShiftPercentages(s));
+        }
+
+        // Reset to defaults
+        function resetToDefaults() {
+            if (!confirm('Reset all inputs to default values?')) return;
+            
+            Object.keys(DEFAULTS).forEach(id => {
+                setInputValue(id, DEFAULTS[id]);
+            });
+            
+            // Clear storage
+            localStorage.removeItem('laborPlannerData_v1');
+            
+            calculateAll();
+            
+            // Re-validate warnings
+            ['pick', 'pack', 'ship', 'indirect'].forEach(s => validateShiftPercentages(s));
+            
+            // Brief feedback
+            const status = document.getElementById('save-status');
+            status.innerHTML = `<i class="fa-solid fa-check text-emerald-500"></i> <span>Reset complete</span>`;
+            status.classList.remove('hidden', 'flex');
+            status.classList.add('flex');
+            
+            setTimeout(() => {
+                status.classList.remove('flex');
+                status.classList.add('hidden');
+                status.innerHTML = `<i class="fa-solid fa-check text-emerald-500"></i> <span>Saved to browser</span>`;
+            }, 1400);
+        }
+
+        // Export current state + results to JSON
+        function exportToJSON() {
+            const data = {};
+            INPUT_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) data[id] = parseFloat(el.value) || 0;
+            });
+            
+            const exportObj = {
+                version: "1.0",
+                exportedAt: new Date().toISOString(),
+                inputs: data,
+                results: window.lastCalculationResults || {}
+            };
+            
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `labor-plan-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Import JSON
+        function importFromJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    
+                    if (imported.inputs) {
+                        Object.keys(imported.inputs).forEach(id => {
+                            if (document.getElementById(id)) {
+                                setInputValue(id, imported.inputs[id]);
+                            }
+                        });
+                        
+                        calculateAll();
+                        saveToLocalStorage();
+                        
+                        // Re-validate
+                        ['pick', 'pack', 'ship', 'indirect'].forEach(s => validateShiftPercentages(s));
+                        
+                        alert('Import successful! Values loaded.');
+                    } else {
+                        alert('Invalid file format. Expected labor planner export.');
+                    }
+                } catch (err) {
+                    alert('Failed to import file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        // Clear everything
+        function clearAllData() {
+            if (!confirm('Clear ALL inputs and saved data? This cannot be undone.')) return;
+            
+            INPUT_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            
+            localStorage.removeItem('laborPlannerData_v1');
+            
+            // Reset metrics to dashes
+            document.querySelectorAll('.stat-number').forEach(el => el.textContent = '—');
+            document.getElementById('results-table-body').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">Enter values above to see calculations</td></tr>';
+            
+            ['pick', 'pack', 'ship', 'indirect'].forEach(s => {
+                const w = document.getElementById(s + '-shift-warning');
+                if (w) w.classList.add('hidden');
+            });
+        }
+
+        // Copy results summary to clipboard
+        function copyResultsToClipboard() {
+            if (!window.lastCalculationResults) {
+                alert('No results to copy yet.');
+                return;
+            }
+            
+            const r = window.lastCalculationResults;
+            const text = `Labor Planning Summary
+Date: ${new Date().toLocaleDateString()}
+
+Total Orders: ${document.getElementById('metric-orders').textContent}
+Total Units: ${document.getElementById('metric-units').textContent}
+
+HEADCOUNT BREAKDOWN
+Pick:        ${r.requiredPickHC.toFixed(2)} HC   (1st: ${r.pick1stHC.toFixed(2)} | 2nd: ${r.pick2ndHC.toFixed(2)})
+Pack:        ${r.requiredPackHC.toFixed(2)} HC   (1st: ${r.pack1stHC.toFixed(2)} | 2nd: ${r.pack2ndHC.toFixed(2)})
+Shipping:    ${r.requiredShipHC.toFixed(2)} HC   (1st: ${r.ship1stHC.toFixed(2)} | 2nd: ${r.ship2ndHC.toFixed(2)})
+Indirect:    ${r.requiredIndirectHC.toFixed(2)} HC   (1st: ${r.ind1stHC.toFixed(2)} | 2nd: ${r.ind2ndHC.toFixed(2)})
+
+TOTALS
+Grand Total: ${r.totalHC.toFixed(2)} HC
+1st Shift:   ${r.total1stHC.toFixed(2)} HC
+2nd Shift:   ${r.total2ndHC.toFixed(2)} HC
+Direct HC:   ${r.totalDirectHC.toFixed(2)}
+Blended Pick UPH: ${r.blendedUPH.toFixed(1)}`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const origText = event.currentTarget ? event.currentTarget.innerHTML : '';
+                // Simple toast
+                const toast = document.createElement('div');
+                toast.className = `fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-5 py-3 rounded-3xl shadow-xl flex items-center gap-x-2`;
+                toast.innerHTML = `<i class="fa-solid fa-check"></i> <span>Results copied to clipboard</span>`;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.transition = 'all 0.2s ease';
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.parentNode.removeChild(toast), 200);
+                }, 2200);
+            }).catch(() => {
+                // Fallback
+                prompt('Copy this text:', text);
+            });
+        }
+
+        // Initialize everything
+        function initializeApp() {
+            initializeTailwind();
+            
+            // Load saved or defaults
+            const hadSavedData = loadFromLocalStorage();
+            
+            // Initial calculations
+            calculateAll();
+            
+            // Validate initial shift percentages
+            ['pick', 'pack', 'ship', 'indirect'].forEach(section => {
+                validateShiftPercentages(section);
+            });
+            
+            // Attach input listeners for real-time updates (already have oninput, but ensure)
+            // The oninput attributes handle it, but we can add change listeners too for safety
+            INPUT_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    // Additional safeguard
+                    el.addEventListener('change', () => {
+                        calculateAll();
+                        saveToLocalStorage();
+                    });
+                    
+                    // Nice-to-have: prevent scroll wheel from changing values accidentally
+                    el.addEventListener('wheel', function(e) {
+                        if (document.activeElement === el) {
+                            e.preventDefault();
+                        }
+                    }, { passive: false });
+                }
+            });
+            
+            // Keyboard shortcut hint (optional)
+            document.addEventListener('keydown', function(e) {
+                if (e.metaKey && e.key === "/") {
+                    e.preventDefault();
+                    const firstInput = document.getElementById('main-orders');
+                    if (firstInput) firstInput.focus();
+                }
+            });
+            
+            // Welcome message if first time (no saved data)
+            if (!hadSavedData) {
+                setTimeout(() => {
+                    console.log('%c[Labor Planner] Loaded with default values. All changes auto-save.', 'color:#64748b');
+                }, 800);
+            }
+            
+            // Expose for debugging / future extension
+            window.LaborPlanner = {
+                recalculate: calculateAll,
+                reset: resetToDefaults,
+                export: exportToJSON,
+                getResults: () => window.lastCalculationResults
+            };
+            
+            console.log('%c[Labor Planner] Ready. Provide your calculation logic for refinements.', 'color:#64748b');
+        }
+
+        // Boot app
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
